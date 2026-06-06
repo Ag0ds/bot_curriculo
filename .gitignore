@@ -1,0 +1,14 @@
+# Ambientes Virtuais Python
+venv/
+env/
+.venv/
+
+# Arquivos de Ambiente (Segurança)
+.env
+
+# Cache e Arquivos Compilados do Python
+__pycache__/
+*.pyc
+
+# Arquivos gerados dinamicamente
+qrcode.png
