@@ -34,50 +34,50 @@ Siga os passos abaixo para rodar o projeto e conectar o seu próprio WhatsApp.
 - Docker e Docker Compose instalados.
 - Python 3.10 ou superior.
 
-### Passo 1: Subir a Evolution API
-Navegue até a pasta `evolution` e suba os containers do banco de dados, Redis e da API:
+### Passo 1: Subir a Infraestrutura (Evolution API)
+A arquitetura utiliza banco de dados PostgreSQL e cache Redis para alta estabilidade.
+Navegue até a pasta `evolution` e suba os containers:
 ```bash
 cd evolution
 docker-compose up -d
 ```
-A API do WhatsApp estará rodando em `http://localhost:8080`.
+A API do WhatsApp estará rodando em `http://localhost:8080`. O Webhook global já está pré-configurado no arquivo `docker-compose.yml`.
 
 ### Passo 2: Configurar o Middleware
-Navegue até a pasta `middleware` e crie um ambiente virtual para instalar as dependências:
+Navegue até a pasta `middleware`, crie um ambiente virtual e instale as dependências:
 ```bash
 cd ../middleware
 python -m venv venv
 venv\Scripts\activate  # No Windows
-pip install fastapi uvicorn httpx
+pip install fastapi uvicorn httpx python-dotenv
 ```
 
 ### Passo 3: Variáveis de Ambiente
-Verifique o arquivo `.env` na pasta `middleware` e garanta que o `BOTPRESS_WEBHOOK_ID` está preenchido com a sua integração Webchat do Botpress.
-
+Verifique o arquivo `.env` na pasta `middleware`. Garanta que o `BOTPRESS_WEBHOOK_ID` está preenchido com o ID da sua integração Webchat do Botpress.
 ```env
-BOTPRESS_WEBHOOK_ID=seu_id_aqui
+BOTPRESS_WEBHOOK_ID=seu_id_do_botpress
 EVOLUTION_API_URL=http://localhost:8080
 EVOLUTION_API_KEY=sua_apikey_global
-EVOLUTION_INSTANCE_NAME=botv4
+EVOLUTION_INSTANCE_NAME=botv30
 ```
 
-### Passo 4: Rodar o Servidor
-Inicie o middleware Python que ficará escutando as mensagens:
+### Passo 4: Conectar o WhatsApp (Gerar QR Code)
+Para evitar conflitos de porta, construímos um script dedicado que sobe um servidor temporário na porta 8001 apenas para "pescar" o QR Code.
+No terminal, ainda na pasta `middleware`, rode:
+```bash
+python connect_whatsapp.py
+```
+O script vai gerar uma imagem chamada `qrcode.png` na mesma pasta. Abra a imagem, escaneie com seu WhatsApp (Aparelhos Conectados) e aguarde o terminal confirmar o sucesso.
+
+### Passo 5: Rodar o Servidor Principal
+Agora que o WhatsApp está conectado, inicie o middleware Python que ficará escutando as mensagens em tempo real na porta 8000:
 ```bash
 python main.py
 ```
 
-### Passo 5: Conectar o WhatsApp
-Em um novo terminal, dentro da pasta `middleware`, rode o script automático para criar a instância e gerar o QR Code no seu terminal:
-```bash
-python connect_whatsapp.py
-```
-Abra o WhatsApp no seu celular, vá em "Aparelhos Conectados" e escaneie o QR Code que aparecerá no console. Em seguida, rode o script de webhook:
-```bash
-python configure_webhook.py
-```
+> **Nota de Segurança:** O `main.py` possui um filtro de _Timestamp_ integrado que ignora automaticamente o Histórico Antigo (eventos de Sincronização) do WhatsApp, garantindo que o bot só responda a mensagens novas.
 
-Pronto! Basta enviar uma mensagem para o número conectado e o Botpress começará a responder automaticamente.
+Pronto! Basta enviar uma mensagem de outro celular para o número conectado e o Botpress começará a responder como seu assistente!
 
 ---
 

@@ -16,27 +16,40 @@ evolution_client = EvolutionClient()
 async def evolution_webhook(request: Request):
     payload = await request.json()
     
-    print(f"\n[DEBUG] Payload recebido: {payload}")
-    
-    if not payload.get("data"):
+    if not payload.get("data") and not payload.get("qrcode"):
         return {"status": "ignored", "reason": "No data in payload"}
         
-    if "messages" in payload["data"] and isinstance(payload["data"]["messages"], list) and len(payload["data"]["messages"]) > 0:
-        message_data = payload["data"]["messages"][0]
+    event_name = payload.get("event", "")
+    if event_name != "messages.upsert":
+        return {"status": "ignored", "reason": f"Event {event_name} ignored"}
+
+    data_payload = payload.get("data", {})
+    
+    if isinstance(data_payload, list):
+        if len(data_payload) > 0:
+            message_data = data_payload[0]
+        else:
+            return {"status": "ignored", "reason": "Empty list in data"}
+    elif isinstance(data_payload, dict) and "messages" in data_payload and isinstance(data_payload["messages"], list) and len(data_payload["messages"]) > 0:
+        message_data = data_payload["messages"][0]
     else:
-        message_data = payload["data"]
-    
-    connected_phone = payload.get("sender", "")
+        message_data = data_payload
     sender_phone = message_data.get("key", {}).get("remoteJid", "")
-    
-    if message_data.get("fromMe") or message_data.get("key", {}).get("fromMe"):
-        if sender_phone != connected_phone and sender_phone != "279362003849241@lid":
-            return {"status": "ignored", "reason": "Message from self to others"}
-        
-    sender_phone = message_data.get("key", {}).get("remoteJid")
+
+    if message_data.get("key", {}).get("fromMe"):
+        return {"status": "ignored", "reason": "Message from self"}
+
+    # Filtro para ignorar mensagens antigas (mais de 2 minutos atrás)
+    import time
+    message_timestamp = int(message_data.get("messageTimestamp", 0))
+    current_time = int(time.time())
+    if current_time - message_timestamp > 120:
+        print(f"[Ignorado] Mensagem antiga de {sender_phone} ignorada.")
+        return {"status": "ignored", "reason": "Message is too old"}
+
     if not sender_phone:
         return {"status": "ignored", "reason": "No sender phone"}
-        
+
     if "@g.us" in sender_phone:
         return {"status": "ignored", "reason": "Group message ignored"}
         
@@ -64,12 +77,8 @@ async def evolution_webhook(request: Request):
             if bp_msg.get("type") == "text":
                 response_text = bp_msg.get("text", "")
                 
-                # Se for o chat "Você" (termina com @lid), a Evolution não consegue enviar para o @lid.
-                # Devemos enviar para o próprio número conectado (connected_phone).
                 reply_phone = sender_phone
-                if sender_phone == "279362003849241@lid" and connected_phone:
-                    reply_phone = connected_phone
-                    
+
                 print(f"[Middleware -> WhatsApp] Enviando resposta para {reply_phone}: {response_text}")
                 await evolution_client.send_text_message(reply_phone, response_text)
                 

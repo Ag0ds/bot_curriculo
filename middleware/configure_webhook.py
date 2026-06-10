@@ -6,7 +6,7 @@ load_dotenv()
 
 API_URL = os.getenv("EVOLUTION_API_URL", "http://localhost:8080")
 API_KEY = os.getenv("EVOLUTION_API_KEY", "sua_apikey_global")
-INSTANCE_NAME = os.getenv("EVOLUTION_INSTANCE_NAME", "botv4")
+INSTANCE_NAME = os.getenv("EVOLUTION_INSTANCE_NAME", "botv25")
 
 headers = {
     "apikey": API_KEY,
